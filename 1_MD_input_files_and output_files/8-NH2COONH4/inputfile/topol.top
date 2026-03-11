@@ -1,0 +1,30 @@
+; Include forcefield parameters
+#include "amber99.ff/forcefield.itp"
+
+[ atomtypes ]
+;name   bond_type     mass     charge   ptype   sigma         epsilon       Amb
+ c        c           0.00000  0.00000   A     3.39967e-01   3.59824e-01 ; 1.91  0.0860
+ o        o           0.00000  0.00000   A     2.95992e-01   8.78640e-01 ; 1.66  0.2100
+ n        n           0.00000  0.00000   A     3.25000e-01   7.11280e-01 ; 1.82  0.1700
+ hn       hn          0.00000  0.00000   A     1.06908e-01   6.56888e-02 ; 0.60  0.0157
+ n4       n4          0.00000  0.00000   A     3.25000e-01   7.11280e-01 ; 1.82  0.1700
+ n3       n3          0.00000  0.00000   A     3.25000e-01   7.11280e-01 ; 1.82  0.1700
+
+; Include CO2+NH3
+#include "NH2COO.itp"
+#include "NH4.itp"
+#include "NH3.itp"
+; Include water topology
+#include "amber99.ff/tip3p.itp"
+; Include topology for ions
+#include "amber99.ff/ions.itp"
+
+[ system ]
+; Name
+CO2 NH3 H2O
+
+[ molecules ]
+; Compound        #mols
+NCO2               1
+NH4                1
+SOL              2162
