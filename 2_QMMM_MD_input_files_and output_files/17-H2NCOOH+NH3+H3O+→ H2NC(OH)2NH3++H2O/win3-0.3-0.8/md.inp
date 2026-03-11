@@ -1,0 +1,244 @@
+&GLOBAL
+  PROJECT md                     ! Name of the calculation
+  #PRINT_LEVEL LOW                ! Verbosity of the output
+  RUN_TYPE MD                    ! Calculation type: MD
+&END GLOBAL
+
+&FORCE_EVAL                      ! parameters needed to calculate energy and forces
+  METHOD QMMM                    ! Hybrid quantum classical
+!  STRESS_TENSOR ANALYTICAL       ! Compute the stress tensor analytically (if available).
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PART1 DFT
+  &DFT
+    BASIS_SET_FILE_NAME  BASIS_MOLOPT
+    POTENTIAL_FILE_NAME  POTENTIAL
+!   WFN_RESTART_FILE_NAME md-RESTART.wfn
+    CHARGE    1
+    MULTIPLICITY    1 
+    &MGRID
+      CUTOFF 300
+      REL_CUTOFF 40
+      COMMENSURATE
+    &END MGRID
+    &QS
+      METHOD GPW
+      EPS_DEFAULT 1E-10 #This is default. Set all EPS_xxx to values such that the energy will be correct up to this value
+      EXTRAPOLATION ASPC
+    &END QS
+    &PRINT
+      &E_DENSITY_CUBE OFF
+      &END E_DENSITY_CUBE
+    &END
+    &SCF                        ! Parameters controlling the convergence of the scf. This section should not be changed. 
+      SCF_GUESS RESTART
+      EPS_SCF 1.0E-5
+      MAX_SCF 100
+      &OT 
+        MINIMIZER  DIIS
+        PRECONDITIONER  FULL_SINGLE_INVERSE
+      &END OT
+      &OUTER_SCF
+        MAX_SCF 10
+        EPS_SCF 1.0E-5
+      &END
+      &PRINT
+        &RESTART OFF
+        &END
+      &END
+    &END SCF
+    &XC
+      &XC_FUNCTIONAL
+        &PBE
+          PARAMETRIZATION REVPBE
+        &END PBE
+      &END XC_FUNCTIONAL
+      &XC_GRID
+          XC_DERIV NN10_SMOOTH
+          XC_SMOOTH_RHO NN10
+      &END XC_GRID
+      &VDW_POTENTIAL
+        POTENTIAL_TYPE PAIR_POTENTIAL
+        &PAIR_POTENTIAL
+          PARAMETER_FILE_NAME dftd3.dat
+          TYPE DFTD3(BJ)
+          REFERENCE_FUNCTIONAL revPBE
+          #CALCULATE_C9_TERM T #Calculate C9-related three-body term, more accurate for large system
+        &END PAIR_POTENTIAL
+      &END VDW_POTENTIAL
+    &END XC
+  &END DFT
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PART2 MM
+&MM                              ! Parameters to run a MM calculation
+    &FORCEFIELD                  ! Set up a force_field for the classical calculations
+      PARMTYPE AMBER             ! Kind of torsion potential
+                                 ! Filename that contains the parameters of the FF
+      PARM_FILE_NAME complex_LJ_mod.prmtop
+      &SPLINE                    ! Parameters to set up the splines used in the nonboned interactions
+        EMAX_SPLINE 1.0E8        ! Maximum value of the potential up to which splines will be constructed
+        RCUT_NB [angstrom] 10    ! Cutoff radius for nonbonded interactions
+      &END SPLINE
+    &END FORCEFIELD
+    &POISSON 
+      &EWALD                   
+  		                 ! Ewald parameters controlling electrostatic
+        EWALD_TYPE SPME          ! Type of ewald 
+        ALPHA .40                ! Alpha parameter associated with Ewald (EWALD|PME|SPME)
+        GMAX 80                  ! Number of grid points (SPME and EWALD)
+      &END EWALD
+    &END POISSON
+&END MM
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PART3 QMMM
+  &QMMM
+    ECOUPL GAUSS 
+    USE_GEEP_LIB 6
+!    MM_POTENTIAL_FILE_NAME MM_POTENTIAL
+
+    &CELL
+      ABC  26.000 26.000 20.000
+      PERIODIC XYZ
+    &END CELL
+    CENTER NEVER
+    !CENTER EVERY_STEP
+    NOCOMPATIBILITY  T
+!    &PERIODIC
+!            #  GMAX    1.0E+00
+!     &MULTIPOLE ON
+!      RCUT   1.0E+01
+!      EWALD_PRECISION 1.0E-06
+!     &END
+!    &END PERIODIC 
+    &WALLS
+      TYPE  REFLECTIVE
+      WALL_SKIN 2.0 2.0 2.0
+    &END WALLS  
+    &QM_KIND H
+       MM_INDEX 5 6 7 9 10 11 13 14 15 161 \
+       162 170 171 182 183 239 240 263 264 266 \ 
+       267 272 273 290 291 317 318 362 363 383 \
+       384 389 390 434 435 443 444 461 462 578 \
+       579 581 582 653 654 707 708 842 843 851 \
+       852 857 858 998 999 1013 1014 1040 1041 1160 \
+       1161 1175 1176 1187 1188 1208 1209 1262 1263 1286 \ 
+       1287 1337 1338 1418 1419 1475 1476 1529 1530 1553 \
+       1554 1631 1632 1709 1710 1742 1743 1793 1794 1808 \
+       1809 1844 1845 1865 1866 1868 1869 1928 1929 1955 \
+       1956 1973 1974 2006 2007 2036 2037 2057 \
+       2058 2069 2070 2099 2100 2135 2136 2147 2148 2186 \
+       2187 2195 2196 2225 2226 2258 2259 2267 2268 2276 \
+       2277 2279 2280 2336 2337 2363 2364 2399 2400 2423 \
+       2424 2447 2448 2567 2568 2612 2613 2642 2643
+    &END QM_KIND 
+    &QM_KIND O
+       MM_INDEX 2 3 12 160 169 181 238 262 265 271 \
+       289 316 361 382 388 433 442 460 577 580 \
+       652 706 841 850 856 997 1012 1039 1159 1174 \
+       1186 1207 1261 1285 1336 1417 1474 1528 1552 1630 \
+       1708 1741 1792 1807 1843 1864 1867 1927 1954 1972 \ 
+       2005 2035 2056 2068 2098 2134 2146 2185 2194 \
+       2224 2257 2266 2275 2278 2335 2362 2398 2422 2446 \
+       2566 2611 2641 
+    &END QM_KIND
+    &QM_KIND C
+       MM_INDEX  1
+    &END QM_KIND
+    &QM_KIND N
+       MM_INDEX  4 8
+    &END QM_KIND
+  &END QMMM
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PART4 SUBSYS
+&SUBSYS                          ! a subsystem: coordinates, topology, molecules and cell 
+    &CELL                        !Set box dimensions here
+      ABC [angstrom] 32.000 32.000 80.000
+      PERIODIC XYZ
+      ALPHA_BETA_GAMMA 90.0 90.0 90.0 
+    &END CELL
+    &TOPOLOGY                    ! Topology for classical runs
+      CONN_FILE_FORMAT AMBER     
+      CONN_FILE_NAME complex_LJ_mod.prmtop
+      COORD_FILE_FORMAT XYZ
+      COORD_FILE_NAME 531.xyz
+    &END TOPOLOGY  
+    &KIND C
+      ELEMENT C
+      BASIS_SET DZVP-MOLOPT-SR-GTH-q4
+      POTENTIAL GTH-PBE
+    &END KIND
+    &KIND O
+      ELEMENT O
+      BASIS_SET DZVP-MOLOPT-SR-GTH-q6
+      POTENTIAL GTH-PBE
+    &END KIND
+    &KIND N
+      ELEMENT N
+      BASIS_SET DZVP-MOLOPT-SR-GTH-q5
+      POTENTIAL GTH-PBE
+    &END KIND
+    &KIND H
+      ELEMENT H
+      BASIS_SET DZVP-MOLOPT-SR-GTH-q1
+      POTENTIAL GTH-PBE
+    &END KIND
+
+&END SUBSYS
+&END FORCE_EVAL
+
+&MOTION
+ &GEO_OPT
+  TYPE MINIMIZATION
+  OPTIMIZER LBFGS
+  MAX_ITER  2000
+  MAX_DR     1.0E-02
+  MAX_FORCE  1.0E-02
+  RMS_DR     1.0E-03
+  RMS_FORCE  1.0E-03
+  &LBFGS
+  &END
+ &END
+! &CONSTRAINT
+!   &FIXED_ATOMS #Set atoms to be fixed
+!     COMPONENTS_TO_FIX XYZ #Which fractional components will be fixed, can be X, Y, Z, XY, XZ, YZ, XYZ
+!     LIST      22  25  28  19  16
+!   &END FIXED_ATOMS
+! &END CONSTRAINT
+ &FREE_ENERGY
+  &METADYN
+   USE_PLUMED .TRUE.
+   PLUMED_INPUT_FILE ./plumed.dat
+  &END METADYN
+ &END FREE_ENERGY
+ &MD
+   ENSEMBLE NVT
+   TIMESTEP 1
+   STEPS  20000
+   TEMPERATURE 300
+    &THERMOSTAT
+     &NOSE             # Uses the Nose-Hoover thermostat
+      LENGTH 3
+      YOSHIDA 3
+      TIMECON 100      # timeconstant of the thermostat chain
+      MTS 2
+     &END NOSE         # how often does thermostat adjust your system
+    &END THERMOSTAT
+ &END MD
+ &PRINT 
+  &TRAJECTORY  SILENT
+    FILENAME =traj.xyz
+    &EACH
+      MD 10
+    &END EACH
+  &END TRAJECTORY
+  &RESTART_HISTORY
+    &EACH
+      MD 500
+    &END EACH
+  &END RESTART_HISTORY
+  &VELOCITIES OFF
+  &END VELOCITIES
+  &FORCES OFF
+  &END FORCES
+  &RESTART ON
+        &EACH
+      MD 200
+        &END 
+  &END RESTART
+ &END PRINT
+ &END MOTION
