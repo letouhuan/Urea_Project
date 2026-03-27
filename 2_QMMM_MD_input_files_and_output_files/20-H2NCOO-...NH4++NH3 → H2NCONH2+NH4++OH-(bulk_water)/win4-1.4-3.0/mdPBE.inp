@@ -1,0 +1,156 @@
+&GLOBAL
+  PROJECT md                     ! Name of the calculation
+  PRINT_LEVEL LOW                ! Verbosity of the output
+  RUN_TYPE MD                    ! Calculation type: MD
+&END GLOBAL
+
+&FORCE_EVAL                      ! parameters needed to calculate energy and forces
+  METHOD Quickstep                    ! Hybrid quantum classical
+  #  STRESS_TENSOR ANALYTICAL       ! Compute the stress tensor analytically (if available).
+    
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PART1 DFT
+  &DFT
+    BASIS_SET_FILE_NAME  BASIS_MOLOPT
+    POTENTIAL_FILE_NAME  POTENTIAL
+#   WFN_RESTART_FILE_NAME qm-RESTART.wfn
+    CHARGE    0 #Net charge
+    MULTIPLICITY    1 #Spin multiplicity
+    &QS
+      METHOD GPW
+      EPS_DEFAULT 1E-10 #This is default. Set all EPS_xxx to values such that the energy will be correct up to this value
+    &END QS
+    &XC
+     &XC_FUNCTIONAL
+     &PBE
+       PARAMETRIZATION REVPBE
+     &END PBE
+     &END XC_FUNCTIONAL
+     &XC_GRID
+     XC_DERIV NN10_SMOOTH
+     XC_SMOOTH_RHO NN10
+     &END XC_GRID
+       &VDW_POTENTIAL
+         POTENTIAL_TYPE PAIR_POTENTIAL
+         &PAIR_POTENTIAL
+           PARAMETER_FILE_NAME dftd3.dat
+           TYPE DFTD3(BJ)
+           REFERENCE_FUNCTIONAL revPBE
+         &END PAIR_POTENTIAL
+       &END VDW_POTENTIAL
+     &END XC
+     &MGRID
+       CUTOFF 300
+       REL_CUTOFF 40
+     &END MGRID
+    &POISSON
+      PERIODIC XYZ #Direction(s) of PBC for calculating electrostatics
+      PSOLVER ANALYTIC #The way to solve Poisson equation
+    &END POISSON
+    &SCF                        ! Parameters controlling the convergence of the scf. This section should not be changed. 
+      SCF_GUESS RESTART
+      EPS_SCF 1.0E-5
+      MAX_SCF 300
+      &OT  T
+        MINIMIZER  DIIS
+      &END OT
+    &END SCF
+  &END DFT
+
+
+
+  &SUBSYS
+    &CELL                        !Set box dimensions here
+      ABC [angstrom]  20.2731   18.5310   17.0460
+      ALPHA_BETA_GAMMA 90.0 90.0 90.0 
+      PERIODIC XYZ
+    &END CELL
+    &TOPOLOGY                    ! Topology for classical runs
+      COORD_FILE_FORMAT XYZ
+      COORD_FILE_NAME win33.xyz
+    &END TOPOLOGY  
+    &KIND O    
+      ELEMENT O 
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE
+    &END KIND
+    &KIND H    
+      ELEMENT H 
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE
+    &END KIND
+    &KIND C    
+      ELEMENT C 
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE
+    &END KIND
+    &KIND N
+      ELEMENT N
+      BASIS_SET DZVP-MOLOPT-SR-GTH
+      POTENTIAL GTH-PBE
+    &END KIND
+
+ &END SUBSYS
+ &END FORCE_EVAL
+
+&MOTION
+   &FREE_ENERGY
+      &METADYN
+       USE_PLUMED .TRUE.
+       PLUMED_INPUT_FILE ./plumed.dat
+       &END METADYN
+   &END FREE_ENERGY
+   #  &CONSTRAINT                
+   #    &FIXED_ATOMS
+   #       COMPONENTS_TO_FIX XYZ
+   #       LIST 1 2 3 4 5 6 7 8 9 10 11 12
+   #       LIST 41 42 43 44 45 46 47 48 49 50 51 52
+   #    &END FIXED_ATOMS
+   #    &END CONSTRAINT
+  &MD
+    ENSEMBLE NVT
+    TIMESTEP 1
+    STEPS  30000
+    TEMPERATURE 300
+     &THERMOSTAT
+      &NOSE             # Uses the Nose-Hoover thermostat
+       TIMECON 100      # timeconstant of the thermostat chain
+      &END NOSE         # how often does thermostat adjust your system
+     &END THERMOSTAT
+
+    &PRINT 
+      &ENERGY
+         &EACH
+            MD 1
+         &END 
+      &END ENERGY
+      &PROGRAM_RUN_INFO
+         &EACH
+            MD 10
+         &END 
+      &END PROGRAM_RUN_INFO
+
+    &END PRINT
+  &END MD
+
+  &PRINT 
+   &TRAJECTORY  SILENT
+     FILENAME =traj.xyz
+     &EACH
+       MD 10
+     &END EACH
+   &END TRAJECTORY
+   &VELOCITIES OFF
+   &END VELOCITIES
+   &FORCES OFF
+   &END FORCES
+   &RESTART_HISTORY ON
+   &END RESTART_HISTORY
+   &RESTART ON
+         &EACH
+       MD 200
+         &END 
+   &END RESTART
+  &END PRINT
+ &END MOTION
+
+
